@@ -36,7 +36,7 @@ public class ReservationService {
     public Reservation createReservation(ReservationDto data) {
         log.info("Creating new reservation...");
 
-        Reservation reservation = reservationWrapper.wrap(data);
+        var reservation = reservationWrapper.wrap(data);
         reservationsMap.put(reservation.uuid(), reservation);
 
         return reservation;
