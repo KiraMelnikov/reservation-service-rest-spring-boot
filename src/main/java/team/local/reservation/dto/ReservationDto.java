@@ -1,4 +1,4 @@
-package team.local.reservation;
+package team.local.reservation.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;

@@ -1,6 +1,9 @@
-package team.local.reservation;
+package team.local.reservation.wrappers;
 
 import org.springframework.stereotype.Component;
+import team.local.reservation.Reservation;
+import team.local.reservation.ReservationStatus;
+import team.local.reservation.dto.ReservationDto;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;

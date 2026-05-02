@@ -1,10 +1,13 @@
-package team.local.reservation;
+package team.local.reservation.controllers;
 
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import team.local.reservation.Reservation;
+import team.local.reservation.dto.ReservationDto;
+import team.local.reservation.services.ReservationService;
 
 import java.util.HashMap;
 import java.util.List;
