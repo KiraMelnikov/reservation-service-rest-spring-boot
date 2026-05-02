@@ -1,9 +1,9 @@
 package team.local.reservation;
 
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -11,30 +11,14 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@AllArgsConstructor
 public class ReservationService {
 
-    private final Map<Long, Reservation> reservationsMap = Map.of(
-            1L, new Reservation(
-                    UUID.randomUUID(),
-                        1L,
-                        12312L,
-                        123213L,
-                        LocalDate.now(),
-                        LocalDate.now().plusDays(7),
-                        ReservationStatus.PENDING
-                ),
-            2L, new Reservation(
-                    UUID.randomUUID(),
-                    2L,
-                    12312L,
-                    123213L,
-                    LocalDate.now(),
-                    LocalDate.now().plusDays(7),
-                    ReservationStatus.PENDING
-                )
-    );
+    private final Map<UUID, Reservation> reservationsMap;
 
-    public Reservation getReservationById(Long id) {
+    private final ReservationWrapper reservationWrapper;
+
+    public Reservation getReservationById(UUID id) {
         log.info("Getting reservation...");
 
         if (!reservationsMap.containsKey(id)) {
@@ -47,5 +31,14 @@ public class ReservationService {
         log.info("Searching all reservations...");
 
         return reservationsMap.values().stream().toList();
+    }
+
+    public Reservation createReservation(ReservationDto data) {
+        log.info("Creating new reservation...");
+
+        Reservation reservation = reservationWrapper.wrap(data);
+        reservationsMap.put(reservation.uuid(), reservation);
+
+        return reservation;
     }
 }

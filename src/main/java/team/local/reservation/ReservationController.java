@@ -1,15 +1,14 @@
 package team.local.reservation;
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 
 
 @Slf4j
@@ -20,9 +19,9 @@ public class ReservationController {
 
     private final ReservationService reservationService;
 
-    @GetMapping("/reservation/{id}")
-    public ResponseEntity<HashMap<String, Object>> getReservationByID(@PathVariable Long id) {
-        log.info("USE [GET] /reservation/{}", id.toString());
+    @GetMapping("/reservations/{id}")
+    public ResponseEntity<HashMap<String, Object>> getReservationByID(@PathVariable UUID id) {
+        log.info("USE [GET] /reservations/{}", id.toString());
 
         HashMap<String, Object> response = new HashMap<>();
 
@@ -43,6 +42,19 @@ public class ReservationController {
         List<Reservation> reservations = reservationService.getAllReservations();
         response.put("status", "success");
         response.put("reservation", reservations);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reservations")
+    public ResponseEntity<HashMap<String, Object>> createReservation(@Valid @RequestBody ReservationDto body) {
+        log.info("USE [POST] /reservations");
+
+        HashMap<String, Object> response = new HashMap<>();
+
+        Reservation reservation = reservationService.createReservation(body);
+        response.put("status", "created");
+        response.put("reservation", reservation);
 
         return ResponseEntity.ok(response);
     }
