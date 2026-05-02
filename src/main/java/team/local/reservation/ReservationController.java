@@ -19,21 +19,23 @@ public class ReservationController {
 
     private final ReservationService reservationService;
 
+    @GetMapping("/reservation/{id}")
+    public ResponseEntity<HashMap<String, Object>> getReservationByID(@PathVariable Long id) {
+        log.info("USE [GET] /reservation/{}", id.toString());
+
+        HashMap<String, Object> response = new HashMap<>();
+
+        Reservation reservation = reservationService.getReservationById(id);
+
+        response.put("status", "success");
+        response.put("reservation", reservation);
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         log.info("Use [GET] /api/v1/health");
         return ResponseEntity.ok("{\"status\": \"ok\"}");
-    }
-
-    @GetMapping("/reservation/{id}")
-    public ResponseEntity<HashMap<String, Object>> getReservationByID(@PathVariable Integer id) {
-
-        log.info("USE [GET] /reservation/{}", id.toString());
-
-        HashMap<String, Object> response = new HashMap<>();
-        String reservation = reservationService.getReservationById(id);
-        response.put("reservationId", reservation);
-
-        return ResponseEntity.ok(response);
     }
 }
