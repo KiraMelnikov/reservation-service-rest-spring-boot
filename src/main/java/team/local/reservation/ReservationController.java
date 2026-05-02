@@ -2,6 +2,8 @@ package team.local.reservation;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
+import java.util.List;
 
 
 @Slf4j
@@ -29,6 +32,19 @@ public class ReservationController {
 
         response.put("status", "success");
         response.put("reservation", reservation);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/reservations")
+    public ResponseEntity<HashMap<String, Object>> getAllReservations() {
+        log.info("USE [GET] /reservations");
+
+        HashMap<String, Object> response = new HashMap<>();
+
+        List<Reservation> reservations = reservationService.getAllReservations();
+        response.put("status", "success");
+        response.put("reservation", reservations);
 
         return ResponseEntity.ok(response);
     }
