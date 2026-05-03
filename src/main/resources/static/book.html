@@ -189,6 +189,49 @@
   .toast .body { font-size: 13px; color: var(--muted); }
   .toast code { font-size: 11px; background: var(--bg); padding: 2px 6px; border-radius: 3px; }
 
+  /* Bookings */
+  .booking {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+  }
+  .booking .info h4 { font-family: Georgia, serif; font-size: 18px; font-weight: 400; margin: 0 0 4px; }
+  .booking .info .dates { color: var(--muted); font-size: 14px; }
+  .booking .info .uuid { color: var(--muted); font-size: 11px; font-family: monospace; margin-top: 4px; }
+  .status-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-left: 8px;
+  }
+  .status-pill.PENDING { background: #fef3c7; color: #92400e; }
+  .status-pill.APPROVED { background: #d1fae5; color: #065f46; }
+  .status-pill.CANCELLED { background: #fee2e2; color: #991b1b; }
+  .booking .cancel-btn {
+    background: transparent;
+    color: var(--err);
+    border: 1px solid var(--err);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .booking .cancel-btn:hover { background: var(--err); color: white; }
+  .booking .cancel-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .empty { text-align: center; color: var(--muted); padding: 32px; font-style: italic; }
+
   /* Footer */
   footer { background: var(--ink); color: rgba(255,255,255,0.6); padding: 32px 24px; text-align: center; font-size: 13px; }
   footer a { color: var(--gold); }
@@ -240,6 +283,17 @@
     <h2>Choose where to stay</h2>
   </div>
   <div class="rooms" id="roomList"></div>
+</div>
+
+<div class="container" id="bookings" style="padding-top: 0;">
+  <div class="section-title">
+    <div class="eyebrow">Your stays</div>
+    <h2>My bookings</h2>
+  </div>
+  <div style="text-align: center; margin-bottom: 24px;">
+    <button class="reserve-btn" id="refreshBookings" style="background: var(--accent);">Refresh</button>
+  </div>
+  <div id="bookingList" style="display: grid; gap: 16px;"></div>
 </div>
 
 <footer>
@@ -375,6 +429,7 @@ async function reserve(roomId, btn) {
       `${room.name} is yours!`,
       `${startDate} → ${endDate}<br>Confirmation: <code>${uuid}</code>`
     );
+    loadBookings();
   } catch (e) {
     showToast('Booking failed', e.message, true);
   } finally {
@@ -383,8 +438,76 @@ async function reserve(roomId, btn) {
   }
 }
 
+async function loadBookings() {
+  const userId = parseInt(document.getElementById('guestId').value, 10);
+  const list = document.getElementById('bookingList');
+
+  if (!userId || userId < 1) {
+    list.innerHTML = '<div class="empty">Enter a guest ID above to see your bookings.</div>';
+    return;
+  }
+
+  list.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const res = await fetch('/api/v1/reservations');
+    const data = await res.json();
+    const all = Array.isArray(data.reservation) ? data.reservation : [];
+    const mine = all.filter(r => r.userId === userId);
+
+    if (mine.length === 0) {
+      list.innerHTML = '<div class="empty">No bookings yet. Reserve a room above to get started.</div>';
+      return;
+    }
+
+    list.innerHTML = mine.map(r => {
+      const room = ROOMS.find(x => x.id === r.roomId);
+      const roomName = room ? room.name : `Room ${r.roomId}`;
+      const canCancel = r.status !== 'CANCELLED';
+      return `
+        <div class="booking">
+          <div class="info">
+            <h4>${roomName}<span class="status-pill ${r.status}">${r.status}</span></h4>
+            <div class="dates">${r.startDate} → ${r.endDate}</div>
+            <div class="uuid">${r.uuid}</div>
+          </div>
+          <button class="cancel-btn" data-uuid="${r.uuid}" ${canCancel ? '' : 'disabled'}>
+            ${canCancel ? 'Cancel' : 'Cancelled'}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    list.querySelectorAll('.cancel-btn').forEach(btn => {
+      if (btn.disabled) return;
+      btn.addEventListener('click', () => cancelBooking(btn.dataset.uuid, btn));
+    });
+  } catch (e) {
+    list.innerHTML = `<div class="empty">Could not load bookings: ${e.message}</div>`;
+  }
+}
+
+async function cancelBooking(uuid, btn) {
+  if (!confirm('Cancel this booking?')) return;
+  btn.disabled = true;
+  btn.textContent = 'Cancelling…';
+  try {
+    const res = await fetch(`/api/v1/reservations/${encodeURIComponent(uuid)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast('Booking cancelled', 'Your reservation has been cancelled.');
+    loadBookings();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Cancel';
+    showToast('Cancel failed', e.message, true);
+  }
+}
+
+document.getElementById('refreshBookings').addEventListener('click', loadBookings);
+document.getElementById('guestId').addEventListener('change', loadBookings);
+
 initDates();
 renderRooms();
+loadBookings();
 </script>
 </body>
 </html>
