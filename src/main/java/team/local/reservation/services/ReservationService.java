@@ -76,7 +76,17 @@ public class ReservationService {
         if (!reservationsMap.containsKey(uuid)) {
             throw new NoSuchElementException("Not found object: " + uuid);
         }
-        reservationsMap.remove(uuid);
+        var reservation = reservationsMap.get(uuid);
+        var approverReservation = new Reservation(
+                reservation.uuid(),
+                reservation.userId(),
+                reservation.roomId(),
+                reservation.startDate(),
+                reservation.endDate(),
+                ReservationStatus.CANCELLED
+        );
+        reservationsMap.put(reservation.uuid(), approverReservation);
+//        reservationsMap.remove(uuid);
     }
 
     public Reservation approveReservation(UUID uuid) {
@@ -103,6 +113,22 @@ public class ReservationService {
     }
 
     private boolean isReservationConflict(Reservation reservation) {
+
+        for (Reservation existingReservation : reservationsMap.values()) {
+                if (reservation.uuid().equals(existingReservation.uuid())) {
+                    continue;
+                }
+                if (!reservation. roomId() .equals(existingReservation.roomId())) {
+                    continue;
+                }
+                if (existingReservation.status().equals(ReservationStatus.APPROVED)) {
+                    continue;
+                }
+                if (reservation.startDate().isBefore(existingReservation.endDate())
+                && (existingReservation.startDate().isBefore(reservation. endDate()))) {
+                    return true;
+                }
+        }
         return false;
     }
 }
