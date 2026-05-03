@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurora Hotel — Admin Dashboard</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --ink: #111827;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --ok: #047857;
+    --ok-bg: #d1fae5;
+    --warn: #b45309;
+    --warn-bg: #fef3c7;
+    --err: #b91c1c;
+    --err-bg: #fee2e2;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+
+  /* Top bar */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .topbar .brand { font-weight: 700; font-size: 16px; letter-spacing: 1px; }
+  .topbar .brand small { color: var(--muted); font-weight: 400; margin-left: 8px; letter-spacing: 0; }
+  .topbar nav { display: flex; gap: 20px; font-size: 14px; }
+  .topbar nav a { color: var(--muted); text-decoration: none; }
+  .topbar nav a:hover { color: var(--ink); }
+
+  /* Layout */
+  main { max-width: 1200px; margin: 0 auto; padding: 32px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+  .stat .value.pending { color: var(--warn); }
+  .stat .value.approved { color: var(--ok); }
+  .stat .value.cancelled { color: var(--err); }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .filter-group { display: flex; gap: 4px; background: var(--surface); padding: 4px; border-radius: 8px; border: 1px solid var(--line); }
+  .filter-btn {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .filter-btn.active { background: var(--primary); color: white; }
+  .toolbar .spacer { flex: 1; }
+  .refresh-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .refresh-btn:hover { background: var(--bg); }
+
+  /* Table */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px 16px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { background: var(--bg); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: #fafbfc; }
+  td.uuid { font-family: monospace; font-size: 12px; color: var(--muted); }
+
+  .status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .status-badge.PENDING { background: var(--warn-bg); color: var(--warn); }
+  .status-badge.APPROVED { background: var(--ok-bg); color: var(--ok); }
+  .status-badge.CANCELLED { background: var(--err-bg); color: var(--err); }
+
+  .actions { display: flex; gap: 8px; }
+  .btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    font-family: inherit;
+  }
+  .btn-approve { background: var(--ok); color: white; }
+  .btn-approve:hover { background: #065f46; }
+  .btn-cancel { background: var(--surface); color: var(--err); border-color: var(--err); }
+  .btn-cancel:hover { background: var(--err); color: white; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .empty { padding: 48px; text-align: center; color: var(--muted); font-style: italic; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface);
+    padding: 14px 18px;
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    border-left: 4px solid var(--ok);
+    max-width: 360px;
+    transform: translateY(120px); opacity: 0;
+    transition: transform 0.3s, opacity 0.3s;
+    z-index: 100;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.err { border-left-color: var(--err); }
+  .toast .title { font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+  .toast .body { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">AURORA · ADMIN <small>Reservations dashboard</small></div>
+  <nav>
+    <a href="book.html">Customer site</a>
+    <a href="index.html">API</a>
+  </nav>
+</div>
+
+<main>
+  <div class="stats">
+    <div class="stat"><div class="label">Total</div><div class="value" id="stat-total">—</div></div>
+    <div class="stat"><div class="label">Pending</div><div class="value pending" id="stat-pending">—</div></div>
+    <div class="stat"><div class="label">Approved</div><div class="value approved" id="stat-approved">—</div></div>
+    <div class="stat"><div class="label">Cancelled</div><div class="value cancelled" id="stat-cancelled">—</div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="filter-group" id="filter">
+      <button class="filter-btn active" data-filter="ALL">All</button>
+      <button class="filter-btn" data-filter="PENDING">Pending</button>
+      <button class="filter-btn" data-filter="APPROVED">Approved</button>
+      <button class="filter-btn" data-filter="CANCELLED">Cancelled</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="refresh-btn" id="refresh">Refresh</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Confirmation</th>
+          <th>Guest</th>
+          <th>Room</th>
+          <th>Check-in</th>
+          <th>Check-out</th>
+          <th>Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+
+<div class="toast" id="toast">
+  <div class="title" id="toastTitle"></div>
+  <div class="body" id="toastBody"></div>
+</div>
+
+<script>
+let state = { reservations: [], filter: 'ALL' };
+
+function showToast(title, body, isError = false) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastBody').textContent = body;
+  toast.classList.toggle('err', isError);
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+async function loadReservations() {
+  try {
+    const res = await fetch('/api/v1/reservations');
+    const data = await res.json();
+    state.reservations = Array.isArray(data.reservation) ? data.reservation : [];
+    renderStats();
+    renderTable();
+  } catch (e) {
+    showToast('Load failed', e.message, true);
+  }
+}
+
+function renderStats() {
+  const r = state.reservations;
+  document.getElementById('stat-total').textContent = r.length;
+  document.getElementById('stat-pending').textContent = r.filter(x => x.status === 'PENDING').length;
+  document.getElementById('stat-approved').textContent = r.filter(x => x.status === 'APPROVED').length;
+  document.getElementById('stat-cancelled').textContent = r.filter(x => x.status === 'CANCELLED').length;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('rows');
+  let list = state.reservations;
+  if (state.filter !== 'ALL') list = list.filter(r => r.status === state.filter);
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">No reservations to display.</td></tr>`;
+    return;
+  }
+
+  list.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+
+  tbody.innerHTML = list.map(r => `
+    <tr data-uuid="${r.uuid}">
+      <td class="uuid">${shortUuid(r.uuid)}</td>
+      <td>#${r.userId}</td>
+      <td>Room ${r.roomId}</td>
+      <td>${r.startDate}</td>
+      <td>${r.endDate}</td>
+      <td><span class="status-badge ${r.status}">${r.status}</span></td>
+      <td>
+        <div class="actions" style="justify-content: flex-end;">
+          <button class="btn btn-approve" data-action="approve" ${r.status !== 'PENDING' ? 'disabled' : ''}>Approve</button>
+          <button class="btn btn-cancel" data-action="cancel" ${r.status === 'CANCELLED' ? 'disabled' : ''}>Cancel</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('button[data-action]').forEach(btn => {
+    if (btn.disabled) return;
+    btn.addEventListener('click', () => {
+      const uuid = btn.closest('tr').dataset.uuid;
+      if (btn.dataset.action === 'approve') approve(uuid, btn);
+      else cancel(uuid, btn);
+    });
+  });
+}
+
+function shortUuid(u) {
+  return u ? u.slice(0, 8) + '…' : '—';
+}
+
+async function approve(uuid, btn) {
+  setBusy(btn, 'Approving…');
+  try {
+    const res = await fetch(`/api/v1/reservations/${encodeURIComponent(uuid)}/approve`, { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data.message || data.error || `HTTP ${res.status}`;
+      throw new Error(msg);
+    }
+    showToast('Reservation approved', shortUuid(uuid));
+    await loadReservations();
+  } catch (e) {
+    showToast('Approve failed', e.message, true);
+    resetBtn(btn, 'Approve');
+  }
+}
+
+async function cancel(uuid, btn) {
+  if (!confirm('Cancel this reservation?')) return;
+  setBusy(btn, 'Cancelling…');
+  try {
+    const res = await fetch(`/api/v1/reservations/${encodeURIComponent(uuid)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast('Reservation cancelled', shortUuid(uuid));
+    await loadReservations();
+  } catch (e) {
+    showToast('Cancel failed', e.message, true);
+    resetBtn(btn, 'Cancel');
+  }
+}
+
+function setBusy(btn, label) { btn.disabled = true; btn.textContent = label; }
+function resetBtn(btn, label) { btn.disabled = false; btn.textContent = label; }
+
+document.getElementById('filter').addEventListener('click', e => {
+  if (!e.target.matches('.filter-btn')) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.filter = e.target.dataset.filter;
+  renderTable();
+});
+
+document.getElementById('refresh').addEventListener('click', loadReservations);
+
+loadReservations();
+</script>
+</body>
+</html>
