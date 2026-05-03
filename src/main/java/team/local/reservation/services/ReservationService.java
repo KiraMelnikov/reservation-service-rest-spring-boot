@@ -57,9 +57,17 @@ public class ReservationService {
         if (currentReservation.status() != ReservationStatus.PENDING) {
             throw new IllegalStateException("Cannot modify reservation status=" + currentReservation.status());
         }
-        reservationsMap.put(currentReservation.uuid(), newReservation);
+        var res = new Reservation(
+                currentReservation.uuid(),
+                newReservation.userId(),
+                newReservation.roomId(),
+                newReservation.startDate(),
+                newReservation.endDate(),
+                ReservationStatus.PENDING
+        );
+        reservationsMap.put(currentReservation.uuid(), res);
 
-        return newReservation;
+        return res;
     }
 
     public void deleteReservation(UUID uuid) {
@@ -69,5 +77,32 @@ public class ReservationService {
             throw new NoSuchElementException("Not found object: " + uuid);
         }
         reservationsMap.remove(uuid);
+    }
+
+    public Reservation approveReservation(UUID uuid) {
+        log.info("Approving reservation: {}", uuid);
+
+        if (!reservationsMap.containsKey(uuid)) {
+            throw new NoSuchElementException("Not found object: " + uuid);
+        }
+        var reservation = reservationsMap.get(uuid);
+        var isConflict = isReservationConflict(reservation);
+        if (isConflict) {
+            throw new IllegalStateException("Cannot approve reservation cause has a conflict.");
+        }
+        var approverReservation = new Reservation(
+                reservation.uuid(),
+                reservation.userId(),
+                reservation.roomId(),
+                reservation.startDate(),
+                reservation.endDate(),
+                ReservationStatus.APPROVED
+        );
+        reservationsMap.put(reservation.uuid(), approverReservation);
+        return approverReservation;
+    }
+
+    private boolean isReservationConflict(Reservation reservation) {
+        return false;
     }
 }

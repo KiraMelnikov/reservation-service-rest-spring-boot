@@ -81,13 +81,28 @@ public class ReservationController {
     }
 
     @DeleteMapping("/reservations/{uuid}")
-    public ResponseEntity<Void> deleteReservation(@PathVariable UUID uuid) {
+    public ResponseEntity<HashMap<String, Object>> deleteReservation(@PathVariable UUID uuid) {
+        log.info("Use [DELETE] /reservations/{}", uuid);
+
+        HashMap<String, Object> response = new HashMap<>();
         try {
             reservationService.deleteReservation(uuid);
-            return ResponseEntity.ok().build();
+            response.put("status", "deleted");
+            return ResponseEntity.ok(response);
         } catch (NoSuchElementException e) {
-            return ResponseEntity.status(404).build();
+            return ResponseEntity.status(404).body(response);
         }
+    }
+
+    @PostMapping("/reservations/{uuid}/approve")
+    public ResponseEntity<HashMap<String, Object>> approveReservation(@PathVariable UUID uuid) {
+
+        HashMap<String, Object> response = new HashMap<>();
+
+        Reservation reservation = reservationService.approveReservation(uuid);
+        response.put("status", "approved");
+        response.put("reservation", reservation);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/health")
