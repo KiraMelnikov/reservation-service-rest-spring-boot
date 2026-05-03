@@ -12,6 +12,7 @@ import team.local.reservation.services.ReservationService;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 
@@ -61,6 +62,32 @@ public class ReservationController {
         response.put("reservation", reservation);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/reservations/{uuid}")
+    public ResponseEntity<HashMap<String, Object>> updateReservationByID(
+            @PathVariable UUID uuid,
+            @RequestBody ReservationDto body
+    ) {
+        log.info("USE [PUT] /reservations/{uuid}");
+
+        HashMap<String, Object> response = new HashMap<>();
+
+        Reservation reservation = reservationService.updateReservation(uuid, body);
+        response.put("status", "updated");
+        response.put("reservation", reservation);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/reservations/{uuid}")
+    public ResponseEntity<Void> deleteReservation(@PathVariable UUID uuid) {
+        try {
+            reservationService.deleteReservation(uuid);
+            return ResponseEntity.ok().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(404).build();
+        }
     }
 
     @GetMapping("/health")

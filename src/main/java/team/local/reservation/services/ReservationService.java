@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import team.local.reservation.Reservation;
+import team.local.reservation.ReservationStatus;
 import team.local.reservation.wrappers.ReservationWrapper;
 import team.local.reservation.dto.ReservationDto;
 
@@ -43,5 +44,30 @@ public class ReservationService {
         reservationsMap.put(reservation.uuid(), reservation);
 
         return reservation;
+    }
+
+    public Reservation updateReservation(UUID uuid, ReservationDto data) {
+        log.info("Updating reservation: {}", uuid);
+
+        var newReservation = reservationWrapper.wrap(data);
+        if (!reservationsMap.containsKey(uuid)) {
+            throw new NoSuchElementException("Not found object: " + uuid);
+        }
+        var currentReservation = reservationsMap.get(uuid);
+        if (currentReservation.status() != ReservationStatus.PENDING) {
+            throw new IllegalStateException("Cannot modify reservation status=" + currentReservation.status());
+        }
+        reservationsMap.put(currentReservation.uuid(), newReservation);
+
+        return newReservation;
+    }
+
+    public void deleteReservation(UUID uuid) {
+        log.info("Deleting reservation: {}", uuid);
+
+        if (!reservationsMap.containsKey(uuid)) {
+            throw new NoSuchElementException("Not found object: " + uuid);
+        }
+        reservationsMap.remove(uuid);
     }
 }
