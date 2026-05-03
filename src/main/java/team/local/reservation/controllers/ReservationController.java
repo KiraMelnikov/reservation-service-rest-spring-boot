@@ -3,6 +3,8 @@ package team.local.reservation.controllers;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import team.local.reservation.Reservation;
@@ -59,7 +61,7 @@ public class ReservationController {
         response.put("status", "created");
         response.put("reservation", reservation);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/health")
