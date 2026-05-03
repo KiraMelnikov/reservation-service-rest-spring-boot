@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import team.local.reservation.Reservation;
 import team.local.reservation.ReservationStatus;
+import team.local.reservation.models.ReservationEntity;
+import team.local.reservation.repositories.ReservationRepository;
 import team.local.reservation.wrappers.ReservationWrapper;
 import team.local.reservation.dto.ReservationDto;
 
@@ -22,6 +24,8 @@ public class ReservationService {
 
     private final ReservationWrapper reservationWrapper;
 
+    private final ReservationRepository repository;
+
     public Reservation getReservationById(UUID id) {
         log.info("Getting reservation...");
 
@@ -34,7 +38,18 @@ public class ReservationService {
     public List<Reservation> getAllReservations() {
         log.info("Searching all reservations...");
 
-        return reservationsMap.values().stream().toList();
+        List<ReservationEntity> allEntities = repository.findAll();
+        return allEntities.stream()
+                .map(it ->
+                        new Reservation(
+                            it.getUuid(),
+                            it.getUserId(),
+                            it.getRoomId(),
+                            it.getStartDate(),
+                            it.getEndDate(),
+                            it.getStatus()
+                    )
+                ).toList();
     }
 
     public Reservation createReservation(ReservationDto data) {
