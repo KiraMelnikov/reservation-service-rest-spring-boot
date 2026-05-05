@@ -230,7 +230,92 @@
   }
   .booking .cancel-btn:hover { background: var(--err); color: white; }
   .booking .cancel-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .booking .edit-btn {
+    background: transparent;
+    color: var(--accent-dark);
+    border: 1px solid var(--accent-dark);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .booking .edit-btn:hover { background: var(--accent-dark); color: white; }
+  .booking-actions { display: flex; gap: 8px; }
   .empty { text-align: center; color: var(--muted); padding: 32px; font-style: italic; }
+
+  /* View toggle */
+  .view-toggle {
+    display: inline-flex;
+    background: white;
+    border-radius: 999px;
+    padding: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    margin-bottom: 24px;
+  }
+  .view-toggle button {
+    padding: 8px 24px;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 999px;
+    transition: background 0.2s, color 0.2s;
+  }
+  .view-toggle button.active { background: var(--ink); color: white; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(26, 29, 41, 0.6);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 200;
+    padding: 16px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    width: 100%; max-width: 460px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal h3 { font-family: Georgia, serif; font-size: 24px; font-weight: 400; margin: 0 0 4px; }
+  .modal .modal-uuid { color: var(--muted); font-size: 11px; font-family: monospace; margin: 0 0 24px; }
+  .modal label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 6px; }
+  .modal input, .modal select {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    margin-bottom: 16px;
+    background: white;
+  }
+  .modal input:focus, .modal select:focus { outline: none; border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .modal-actions button {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+    border: none;
+  }
+  .modal-actions .btn-save { background: var(--ink); color: white; }
+  .modal-actions .btn-save:hover { background: var(--accent); }
+  .modal-actions .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .modal-actions .btn-cancel-modal { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .modal-actions .btn-cancel-modal:hover { color: var(--ink); }
 
   /* Footer */
   footer { background: var(--ink); color: rgba(255,255,255,0.6); padding: 32px 24px; text-align: center; font-size: 13px; }
@@ -291,7 +376,13 @@
     <h2>My bookings</h2>
   </div>
   <div style="text-align: center; margin-bottom: 24px;">
-    <button class="reserve-btn" id="refreshBookings" style="background: var(--accent);">Refresh</button>
+    <div class="view-toggle" id="viewToggle">
+      <button data-view="active" class="active">Active</button>
+      <button data-view="archive">Archive</button>
+    </div>
+    <div>
+      <button class="reserve-btn" id="refreshBookings" style="background: var(--accent);">Refresh</button>
+    </div>
   </div>
   <div id="bookingList" style="display: grid; gap: 16px;"></div>
 </div>
@@ -303,6 +394,25 @@
 <div class="toast" id="toast">
   <div class="title" id="toastTitle"></div>
   <div class="body" id="toastBody"></div>
+</div>
+
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <h3>Edit your booking</h3>
+    <p class="modal-uuid" id="editUuid"></p>
+    <form id="editForm">
+      <label for="editRoom">Room</label>
+      <select id="editRoom" required></select>
+      <label for="editStartDate">Check-in</label>
+      <input type="date" id="editStartDate" required>
+      <label for="editEndDate">Check-out</label>
+      <input type="date" id="editEndDate" required>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel-modal" id="editClose">Close</button>
+        <button type="submit" class="btn-save" id="editSave">Save changes</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <script>
@@ -438,6 +548,19 @@ async function reserve(roomId, btn) {
   }
 }
 
+let bookingView = 'active';
+const isoToday = () => new Date().toISOString().slice(0, 10);
+function isActiveBooking(r) {
+  if (r.status === 'PENDING') return true;
+  if (r.status === 'APPROVED') return r.endDate >= isoToday();
+  return false;
+}
+function isArchiveBooking(r) {
+  if (r.status === 'CANCELLED') return true;
+  if (r.status === 'APPROVED') return r.endDate < isoToday();
+  return false;
+}
+
 async function loadBookings() {
   const userId = parseInt(document.getElementById('guestId').value, 10);
   const list = document.getElementById('bookingList');
@@ -453,16 +576,23 @@ async function loadBookings() {
     const data = await res.json();
     const all = Array.isArray(data.reservation) ? data.reservation : [];
     const mine = all.filter(r => r.userId === userId);
+    const filtered = bookingView === 'archive' ? mine.filter(isArchiveBooking) : mine.filter(isActiveBooking);
 
-    if (mine.length === 0) {
-      list.innerHTML = '<div class="empty">No bookings yet. Reserve a room above to get started.</div>';
+    if (filtered.length === 0) {
+      const msg = bookingView === 'archive'
+        ? 'Nothing in your archive yet.'
+        : 'No active bookings. Reserve a room above to get started.';
+      list.innerHTML = `<div class="empty">${msg}</div>`;
       return;
     }
 
-    list.innerHTML = mine.map(r => {
+    filtered.sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+
+    list.innerHTML = filtered.map(r => {
       const room = ROOMS.find(x => x.id === r.roomId);
       const roomName = room ? room.name : `Room ${r.roomId}`;
       const canCancel = r.status !== 'CANCELLED';
+      const canEdit = r.status === 'PENDING';
       return `
         <div class="booking">
           <div class="info">
@@ -470,9 +600,12 @@ async function loadBookings() {
             <div class="dates">${r.startDate} → ${r.endDate}</div>
             <div class="uuid">${r.uuid}</div>
           </div>
-          <button class="cancel-btn" data-uuid="${r.uuid}" ${canCancel ? '' : 'disabled'}>
-            ${canCancel ? 'Cancel' : 'Cancelled'}
-          </button>
+          <div class="booking-actions">
+            ${canEdit ? `<button class="edit-btn" data-uuid="${r.uuid}">Edit</button>` : ''}
+            <button class="cancel-btn" data-uuid="${r.uuid}" ${canCancel ? '' : 'disabled'}>
+              ${canCancel ? 'Cancel' : 'Cancelled'}
+            </button>
+          </div>
         </div>
       `;
     }).join('');
@@ -480,6 +613,9 @@ async function loadBookings() {
     list.querySelectorAll('.cancel-btn').forEach(btn => {
       if (btn.disabled) return;
       btn.addEventListener('click', () => cancelBooking(btn.dataset.uuid, btn));
+    });
+    list.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => openEditModal(btn.dataset.uuid, mine));
     });
   } catch (e) {
     list.innerHTML = `<div class="empty">Could not load bookings: ${e.message}</div>`;
@@ -507,6 +643,73 @@ async function cancelBooking(uuid, btn) {
 
 document.getElementById('refreshBookings').addEventListener('click', loadBookings);
 document.getElementById('guestId').addEventListener('change', loadBookings);
+
+document.getElementById('viewToggle').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#viewToggle button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  bookingView = e.target.dataset.view;
+  loadBookings();
+});
+
+let editingUuid = null;
+
+function openEditModal(uuid, mineList) {
+  const r = mineList.find(x => x.uuid === uuid);
+  if (!r) return;
+  editingUuid = uuid;
+  const select = document.getElementById('editRoom');
+  select.innerHTML = ROOMS.map(room =>
+    `<option value="${room.id}" ${room.id === r.roomId ? 'selected' : ''}>${room.name} — $${room.price}/night</option>`
+  ).join('');
+  document.getElementById('editUuid').textContent = uuid;
+  document.getElementById('editStartDate').value = r.startDate;
+  document.getElementById('editStartDate').min = isoToday();
+  document.getElementById('editEndDate').value = r.endDate;
+  document.getElementById('editEndDate').min = isoToday();
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('show');
+  editingUuid = null;
+}
+
+document.getElementById('editClose').addEventListener('click', closeEditModal);
+document.getElementById('editModal').addEventListener('click', e => {
+  if (e.target.id === 'editModal') closeEditModal();
+});
+
+document.getElementById('editForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!editingUuid) return;
+  const userId = parseInt(document.getElementById('guestId').value, 10);
+  const roomId = parseInt(document.getElementById('editRoom').value, 10);
+  const startDate = document.getElementById('editStartDate').value;
+  const endDate = document.getElementById('editEndDate').value;
+  if (endDate <= startDate) {
+    showToast('Invalid dates', 'Check-out must be after check-in.', true);
+    return;
+  }
+  const saveBtn = document.getElementById('editSave');
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/api/v1/reservations/${encodeURIComponent(editingUuid)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, roomId, startDate, endDate })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    showToast('Booking updated', 'Your changes have been saved.');
+    closeEditModal();
+    loadBookings();
+  } catch (err) {
+    showToast('Update failed', err.message, true);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = 'Save changes';
+  }
+});
 
 initDates();
 renderRooms();

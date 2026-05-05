@@ -135,7 +135,38 @@
   .btn-approve:hover { background: #065f46; }
   .btn-cancel { background: var(--surface); color: var(--err); border-color: var(--err); }
   .btn-cancel:hover { background: var(--err); color: white; }
+  .btn-edit { background: var(--surface); color: var(--primary); border-color: var(--primary); }
+  .btn-edit:hover { background: var(--primary); color: white; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(17, 24, 39, 0.5);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 24px;
+    width: 100%; max-width: 440px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .modal h3 { margin: 0 0 4px; font-size: 18px; }
+  .modal .modal-uuid { color: var(--muted); font-size: 12px; font-family: monospace; margin: 0 0 20px; }
+  .modal label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 4px; }
+  .modal input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 14px; font-family: inherit; margin-bottom: 14px; }
+  .modal input:focus { outline: none; border-color: var(--primary); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .modal-actions button { padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; font-family: inherit; border: none; }
+  .modal-actions .btn-save { background: var(--primary); color: white; }
+  .modal-actions .btn-save:hover { background: var(--primary-dark); }
+  .modal-actions .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .modal-actions .btn-cancel-modal { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  .modal-actions .btn-cancel-modal:hover { background: var(--bg); }
 
   .empty { padding: 48px; text-align: center; color: var(--muted); font-style: italic; }
 
@@ -178,10 +209,10 @@
 
   <div class="toolbar">
     <div class="filter-group" id="filter">
-      <button class="filter-btn active" data-filter="ALL">All</button>
+      <button class="filter-btn active" data-filter="ACTIVE">Active</button>
       <button class="filter-btn" data-filter="PENDING">Pending</button>
       <button class="filter-btn" data-filter="APPROVED">Approved</button>
-      <button class="filter-btn" data-filter="CANCELLED">Cancelled</button>
+      <button class="filter-btn" data-filter="ARCHIVE">Archive</button>
     </div>
     <div class="spacer"></div>
     <button class="refresh-btn" id="refresh">Refresh</button>
@@ -210,8 +241,41 @@
   <div class="body" id="toastBody"></div>
 </div>
 
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <h3>Edit reservation</h3>
+    <p class="modal-uuid" id="editUuid"></p>
+    <form id="editForm">
+      <label for="editUserId">Guest ID</label>
+      <input type="number" id="editUserId" min="1" required>
+      <label for="editRoomId">Room ID</label>
+      <input type="number" id="editRoomId" min="1" required>
+      <label for="editStartDate">Check-in</label>
+      <input type="date" id="editStartDate" required>
+      <label for="editEndDate">Check-out</label>
+      <input type="date" id="editEndDate" required>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel-modal" id="editClose">Close</button>
+        <button type="submit" class="btn-save" id="editSave">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
-let state = { reservations: [], filter: 'ALL' };
+let state = { reservations: [], filter: 'ACTIVE' };
+const today = () => new Date().toISOString().slice(0, 10);
+
+function isActive(r) {
+  if (r.status === 'PENDING') return true;
+  if (r.status === 'APPROVED') return r.endDate >= today();
+  return false;
+}
+function isArchive(r) {
+  if (r.status === 'CANCELLED') return true;
+  if (r.status === 'APPROVED') return r.endDate < today();
+  return false;
+}
 
 function showToast(title, body, isError = false) {
   const toast = document.getElementById('toast');
@@ -246,7 +310,11 @@ function renderStats() {
 function renderTable() {
   const tbody = document.getElementById('rows');
   let list = state.reservations;
-  if (state.filter !== 'ALL') list = list.filter(r => r.status === state.filter);
+
+  if (state.filter === 'ACTIVE')         list = list.filter(isActive);
+  else if (state.filter === 'ARCHIVE')   list = list.filter(isArchive);
+  else if (state.filter === 'APPROVED')  list = list.filter(r => r.status === 'APPROVED' && r.endDate >= today());
+  else if (state.filter === 'PENDING')   list = list.filter(r => r.status === 'PENDING');
 
   if (list.length === 0) {
     tbody.innerHTML = `<tr><td colspan="7" class="empty">No reservations to display.</td></tr>`;
@@ -265,8 +333,9 @@ function renderTable() {
       <td><span class="status-badge ${r.status}">${r.status}</span></td>
       <td>
         <div class="actions" style="justify-content: flex-end;">
+          <button class="btn btn-edit"    data-action="edit"    ${r.status !== 'PENDING' ? 'disabled' : ''}>Edit</button>
           <button class="btn btn-approve" data-action="approve" ${r.status !== 'PENDING' ? 'disabled' : ''}>Approve</button>
-          <button class="btn btn-cancel" data-action="cancel" ${r.status === 'CANCELLED' ? 'disabled' : ''}>Cancel</button>
+          <button class="btn btn-cancel"  data-action="cancel"  ${r.status === 'CANCELLED' ? 'disabled' : ''}>Cancel</button>
         </div>
       </td>
     </tr>
@@ -276,8 +345,10 @@ function renderTable() {
     if (btn.disabled) return;
     btn.addEventListener('click', () => {
       const uuid = btn.closest('tr').dataset.uuid;
-      if (btn.dataset.action === 'approve') approve(uuid, btn);
-      else cancel(uuid, btn);
+      const action = btn.dataset.action;
+      if (action === 'approve') approve(uuid, btn);
+      else if (action === 'cancel') cancel(uuid, btn);
+      else if (action === 'edit') openEditModal(uuid);
     });
   });
 }
@@ -322,6 +393,64 @@ async function cancel(uuid, btn) {
 
 function setBusy(btn, label) { btn.disabled = true; btn.textContent = label; }
 function resetBtn(btn, label) { btn.disabled = false; btn.textContent = label; }
+
+let editingUuid = null;
+
+function openEditModal(uuid) {
+  const r = state.reservations.find(x => x.uuid === uuid);
+  if (!r) return;
+  editingUuid = uuid;
+  document.getElementById('editUuid').textContent = uuid;
+  document.getElementById('editUserId').value = r.userId;
+  document.getElementById('editRoomId').value = r.roomId;
+  document.getElementById('editStartDate').value = r.startDate;
+  document.getElementById('editEndDate').value = r.endDate;
+  document.getElementById('editModal').classList.add('show');
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('show');
+  editingUuid = null;
+}
+
+document.getElementById('editClose').addEventListener('click', closeEditModal);
+document.getElementById('editModal').addEventListener('click', e => {
+  if (e.target.id === 'editModal') closeEditModal();
+});
+
+document.getElementById('editForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!editingUuid) return;
+  const saveBtn = document.getElementById('editSave');
+  const startDate = document.getElementById('editStartDate').value;
+  const endDate = document.getElementById('editEndDate').value;
+  if (endDate <= startDate) {
+    showToast('Invalid dates', 'Check-out must be after check-in.', true);
+    return;
+  }
+  const body = {
+    userId: parseInt(document.getElementById('editUserId').value, 10),
+    roomId: parseInt(document.getElementById('editRoomId').value, 10),
+    startDate, endDate
+  };
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/api/v1/reservations/${encodeURIComponent(editingUuid)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `HTTP ${res.status}`);
+    showToast('Reservation updated', shortUuid(editingUuid));
+    closeEditModal();
+    await loadReservations();
+  } catch (err) {
+    showToast('Update failed', err.message, true);
+  } finally {
+    saveBtn.disabled = false; saveBtn.textContent = 'Save';
+  }
+});
 
 document.getElementById('filter').addEventListener('click', e => {
   if (!e.target.matches('.filter-btn')) return;
