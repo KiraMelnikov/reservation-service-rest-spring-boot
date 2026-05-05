@@ -492,7 +492,10 @@ async function cancelBooking(uuid, btn) {
   btn.textContent = 'Cancelling…';
   try {
     const res = await fetch(`/api/v1/reservations/${encodeURIComponent(uuid)}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.message || `HTTP ${res.status}`);
+    }
     showToast('Booking cancelled', 'Your reservation has been cancelled.');
     loadBookings();
   } catch (e) {
