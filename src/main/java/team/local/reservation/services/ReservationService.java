@@ -95,19 +95,20 @@ public class ReservationService {
     public void deleteReservation(UUID uuid) {
         log.info("Deleting reservation: {}", uuid);
 
-        if (!reservationsMap.containsKey(uuid)) {
-            throw new NoSuchElementException("Not found object: " + uuid);
-        }
-        var reservation = reservationsMap.get(uuid);
-        var approverReservation = new Reservation(
-                reservation.uuid(),
-                reservation.userId(),
-                reservation.roomId(),
-                reservation.startDate(),
-                reservation.endDate(),
-                ReservationStatus.CANCELLED
+        var currentReservationEntity = repository.findById(uuid).orElseThrow(
+                () -> new EntityNotFoundException("Not found reservation by id: " + uuid)
         );
-        reservationsMap.put(reservation.uuid(), approverReservation);
+        var deletedReservation = new ReservationEntity(
+                currentReservationEntity.getUuid(),
+                currentReservationEntity.getUserId(),
+                currentReservationEntity.getRoomId(),
+                currentReservationEntity.getStartDate(),
+                currentReservationEntity.getEndDate(),
+                ReservationStatus.CANCELLED,
+                currentReservationEntity.getCreatedAt(),
+                currentReservationEntity.getLastUpdatedAt()
+        );
+        repository.save(deletedReservation);
     }
 
     public Reservation approveReservation(UUID uuid) {
@@ -116,40 +117,33 @@ public class ReservationService {
         var reservationEntity = repository.findById(uuid).orElseThrow(
                 () -> new EntityNotFoundException("Not found reservation by: " + uuid)
         );
-        var reservation = toDomainReservation(reservationEntity);
-        var isConflict = isReservationConflict(reservation);
+        var isConflict = isReservationConflict(reservationEntity);
         if (isConflict) {
             throw new IllegalStateException("Cannot approve reservation cause has a conflict.");
         }
-        var approverReservationEntity = new ReservationEntity(
-                null,
-                reservation.userId(),
-                reservation.roomId(),
-                reservation.startDate(),
-                reservation.endDate(),
-                ReservationStatus.APPROVED,
-                null,
-                null
-        );
-        repository.save(approverReservationEntity);
+        reservationEntity.setStatus(ReservationStatus.APPROVED);
+        repository.save(reservationEntity);
 
-        return toDomainReservation(approverReservationEntity);
+        return toDomainReservation(reservationEntity);
     }
 
-    private boolean isReservationConflict(Reservation reservation) {
+    private boolean isReservationConflict(ReservationEntity reservationEntity) {
+        List<ReservationEntity> allEntities = repository.findAll();
 
-        for (Reservation existingReservation : reservationsMap.values()) {
-            if (reservation.uuid().equals(existingReservation.uuid())) {
+        for (ReservationEntity existingReservationEntity : allEntities) {
+            if (reservationEntity.getUuid().equals(existingReservationEntity.getUuid())) {
                 continue;
             }
-            if (!reservation.roomId().equals(existingReservation.roomId())) {
+            if (!reservationEntity.getRoomId().equals(existingReservationEntity.getRoomId())) {
                 continue;
             }
-            if (existingReservation.status().equals(ReservationStatus.APPROVED)) {
+            if (!existingReservationEntity.getStatus().equals(ReservationStatus.APPROVED)) {
                 continue;
             }
-            if (reservation.startDate().isBefore(existingReservation.endDate())
-                    && (existingReservation.startDate().isBefore(reservation.endDate()))) {
+            if (
+                    reservationEntity.getStartDate().isBefore(existingReservationEntity.getEndDate())
+                    && existingReservationEntity.getStartDate().isBefore(reservationEntity.getEndDate())
+            ) {
                 return true;
             }
         }
