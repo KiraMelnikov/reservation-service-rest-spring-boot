@@ -18,8 +18,6 @@ import java.util.*;
 @AllArgsConstructor
 public class ReservationService {
 
-    private final Map<UUID, Reservation> reservationsMap;
-
     private final ReservationWrapper reservationWrapper;
 
     private final ReservationRepository repository;
@@ -119,7 +117,9 @@ public class ReservationService {
         );
         var isConflict = isReservationConflict(reservationEntity);
         if (isConflict) {
-            throw new IllegalStateException("Cannot approve reservation cause has a conflict.");
+            throw new IllegalStateException(
+                    "Cannot approve reservation " + uuid + " which has a conflict with " + reservationEntity.getUuid()
+            );
         }
         reservationEntity.setStatus(ReservationStatus.APPROVED);
         repository.save(reservationEntity);

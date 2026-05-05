@@ -1,5 +1,6 @@
 package team.local.reservation.controllers;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,6 @@ import team.local.reservation.services.ReservationService;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 
@@ -30,12 +30,18 @@ public class ReservationController {
 
         HashMap<String, Object> response = new HashMap<>();
 
-        Reservation reservation = reservationService.getReservationById(id);
+        try {
+            Reservation reservation = reservationService.getReservationById(id);
+            response.put("status", "success");
+            response.put("reservation", reservation);
 
-        response.put("status", "success");
-        response.put("reservation", reservation);
+            return ResponseEntity.ok(response);
+        } catch (EntityNotFoundException e) {
+            response.put("status", "failed");
+            response.put("message", e.getMessage());
 
-        return ResponseEntity.ok(response);
+            return ResponseEntity.status(404).body(response);
+        }
     }
 
     @GetMapping("/reservations")
@@ -72,12 +78,25 @@ public class ReservationController {
         log.info("USE [PUT] /reservations/{uuid}");
 
         HashMap<String, Object> response = new HashMap<>();
+        try {
+            Reservation reservation = reservationService.updateReservation(uuid, body);
+            response.put("status", "updated");
+            response.put("reservation", reservation);
 
-        Reservation reservation = reservationService.updateReservation(uuid, body);
-        response.put("status", "updated");
-        response.put("reservation", reservation);
+            return ResponseEntity.ok(response);
 
-        return ResponseEntity.ok(response);
+        } catch (EntityNotFoundException e) {
+            response.put("status", "failed");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(404).body(response);
+        } catch (IllegalStateException e) {
+            response.put("status", "failed");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(400).body(response);
+        }
+
     }
 
     @DeleteMapping("/reservations/{uuid}")
@@ -89,7 +108,9 @@ public class ReservationController {
             reservationService.deleteReservation(uuid);
             response.put("status", "deleted");
             return ResponseEntity.ok(response);
-        } catch (NoSuchElementException e) {
+        } catch (EntityNotFoundException e) {
+            response.put("status", "failed");
+            response.put("message", e.getMessage());
             return ResponseEntity.status(404).body(response);
         }
     }
@@ -98,11 +119,23 @@ public class ReservationController {
     public ResponseEntity<HashMap<String, Object>> approveReservation(@PathVariable UUID uuid) {
 
         HashMap<String, Object> response = new HashMap<>();
+        try {
+            Reservation reservation = reservationService.approveReservation(uuid);
+            response.put("status", "approved");
+            response.put("reservation", reservation);
 
-        Reservation reservation = reservationService.approveReservation(uuid);
-        response.put("status", "approved");
-        response.put("reservation", reservation);
-        return ResponseEntity.ok(response);
+            return ResponseEntity.ok(response);
+        } catch (EntityNotFoundException e) {
+            response.put("status", "failed");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(404).body(response);
+        } catch (IllegalStateException e) {
+            response.put("status", "failed");
+            response.put("message", e.getMessage());
+
+            return ResponseEntity.status(400).body(response);
+        }
     }
 
     @GetMapping("/health")
