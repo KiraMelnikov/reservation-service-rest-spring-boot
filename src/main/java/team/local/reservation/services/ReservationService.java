@@ -1,5 +1,6 @@
 package team.local.reservation.services;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -10,10 +11,7 @@ import team.local.reservation.repositories.ReservationRepository;
 import team.local.reservation.wrappers.ReservationWrapper;
 import team.local.reservation.dto.ReservationDto;
 
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -29,36 +27,40 @@ public class ReservationService {
     public Reservation getReservationById(UUID id) {
         log.info("Getting reservation...");
 
-        if (!reservationsMap.containsKey(id)) {
-            throw new NoSuchElementException("Not found reservation.");
-        }
-        return reservationsMap.get(id);
+        ReservationEntity reservationEntity = repository.findById(id).orElseThrow(
+                () -> new EntityNotFoundException("Not found reservation by uuid: " + id)
+        );
+        return toDomainReservation(reservationEntity);
     }
 
     public List<Reservation> getAllReservations() {
         log.info("Searching all reservations...");
 
         List<ReservationEntity> allEntities = repository.findAll();
-        return allEntities.stream()
-                .map(it ->
-                        new Reservation(
-                            it.getUuid(),
-                            it.getUserId(),
-                            it.getRoomId(),
-                            it.getStartDate(),
-                            it.getEndDate(),
-                            it.getStatus()
-                    )
-                ).toList();
+        return allEntities.stream().map(this::toDomainReservation).toList();
     }
 
     public Reservation createReservation(ReservationDto data) {
         log.info("Creating new reservation...");
 
         var reservation = reservationWrapper.wrap(data);
-        reservationsMap.put(reservation.uuid(), reservation);
+        if (reservation.uuid() != null) {
+            throw new IllegalArgumentException("UUID should not be present.");
+            }
 
-        return reservation;
+        ReservationEntity reservationEntity = new ReservationEntity(
+                null,
+                reservation.userId(),
+                reservation.roomId(),
+                reservation.startDate(),
+                reservation.endDate(),
+                reservation.status(),
+                null,
+                null
+        );
+        var savedEntity = repository.save(reservationEntity);
+
+        return toDomainReservation(savedEntity);
     }
 
     public Reservation updateReservation(UUID uuid, ReservationDto data) {
@@ -101,7 +103,6 @@ public class ReservationService {
                 ReservationStatus.CANCELLED
         );
         reservationsMap.put(reservation.uuid(), approverReservation);
-//        reservationsMap.remove(uuid);
     }
 
     public Reservation approveReservation(UUID uuid) {
@@ -145,5 +146,16 @@ public class ReservationService {
                 }
         }
         return false;
+    }
+
+    private Reservation toDomainReservation(ReservationEntity reservationEntity) {
+        return new Reservation(
+                        reservationEntity.getUuid(),
+                        reservationEntity.getUserId(),
+                        reservationEntity.getRoomId(),
+                        reservationEntity.getStartDate(),
+                        reservationEntity.getEndDate(),
+                        reservationEntity.getStatus()
+                );
     }
 }

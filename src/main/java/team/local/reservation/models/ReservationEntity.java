@@ -2,7 +2,9 @@ package team.local.reservation.models;
 
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SourceType;
@@ -16,6 +18,8 @@ import java.util.UUID;
 
 @Setter
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "reservations")
 public class ReservationEntity {
@@ -36,9 +40,9 @@ public class ReservationEntity {
     @Column(name = "status")
     private ReservationStatus status;
     @CreationTimestamp(source = SourceType.DB)
-    @Column(name = "_created_at")
+    @Column(name = "created_at")
     private Instant createdAt;
     @UpdateTimestamp(source = SourceType.DB)
-    @Column(name = "_last_updated_at")
+    @Column(name = "last_updated_at")
     private Instant lastUpdatedAt;
 }
