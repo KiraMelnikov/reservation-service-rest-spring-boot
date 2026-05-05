@@ -99,13 +99,13 @@ public class ReservationController {
 
     }
 
-    @DeleteMapping("/reservations/{uuid}")
-    public ResponseEntity<HashMap<String, Object>> deleteReservation(@PathVariable UUID uuid) {
+    @DeleteMapping("/reservations/{uuid}/cancel")
+    public ResponseEntity<HashMap<String, Object>> cancelReservation(@PathVariable UUID uuid) {
         log.info("Use [DELETE] /reservations/{}", uuid);
 
         HashMap<String, Object> response = new HashMap<>();
         try {
-            reservationService.deleteReservation(uuid);
+            reservationService.cancelReservation(uuid);
             response.put("status", "deleted");
             return ResponseEntity.ok(response);
         } catch (EntityNotFoundException e) {

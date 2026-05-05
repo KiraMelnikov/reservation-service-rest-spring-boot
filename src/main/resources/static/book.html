@@ -627,7 +627,7 @@ async function cancelBooking(uuid, btn) {
   btn.disabled = true;
   btn.textContent = 'Cancelling…';
   try {
-    const res = await fetch(`/api/v1/reservations/${encodeURIComponent(uuid)}`, { method: 'DELETE' });
+    const res = await fetch(`/api/v1/reservations/${encodeURIComponent(uuid)}/cancel`, { method: 'DELETE' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       throw new Error(data.message || `HTTP ${res.status}`);

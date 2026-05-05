@@ -90,23 +90,13 @@ public class ReservationService {
         return toDomainReservation(updatedReservationEntity);
     }
 
-    public void deleteReservation(UUID uuid) {
-        log.info("Deleting reservation: {}", uuid);
+    public void cancelReservation(UUID uuid) {
+        log.info("Cancelling reservation: {}", uuid);
 
-        var currentReservationEntity = repository.findById(uuid).orElseThrow(
+        var reservationEntity = repository.findById(uuid).orElseThrow(
                 () -> new EntityNotFoundException("Not found reservation by id: " + uuid)
         );
-        var deletedReservation = new ReservationEntity(
-                currentReservationEntity.getUuid(),
-                currentReservationEntity.getUserId(),
-                currentReservationEntity.getRoomId(),
-                currentReservationEntity.getStartDate(),
-                currentReservationEntity.getEndDate(),
-                ReservationStatus.CANCELLED,
-                currentReservationEntity.getCreatedAt(),
-                currentReservationEntity.getLastUpdatedAt()
-        );
-        repository.save(deletedReservation);
+        repository.setStatus(reservationEntity.getUuid(), ReservationStatus.CANCELLED);
     }
 
     public Reservation approveReservation(UUID uuid) {

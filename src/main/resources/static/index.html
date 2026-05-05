@@ -216,7 +216,7 @@ function callApprove() {
 function callDelete() {
   const id = document.getElementById('delete-id').value.trim();
   if (!id) { render('resp-delete', 'Validation', 'uuid is required', false); return; }
-  send('resp-delete', `${baseUrl()}/reservations/${encodeURIComponent(id)}`, {
+  send('resp-delete', `${baseUrl()}/reservations/${encodeURIComponent(id)}/cancel`, {
     method: 'DELETE'
   });
 }
